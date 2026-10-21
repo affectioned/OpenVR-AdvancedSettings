@@ -197,6 +197,10 @@ private:
     bool m_dragHandNoDevice = false;
     bool m_lastLeftHandDragInput = false;
     bool m_lastRightHandDragInput = false;
+    bool m_lastOverrideLeftHandDragInput = false;
+    bool m_lastOverrideRightHandDragInput = false;
+    bool m_lastSwapLeftHandDragInput = false;
+    bool m_lastSwapRightHandDragInput = false;
     vr::ETrackingResult m_lastHmdTrackingResult
         = vr::TrackingResult_Uninitialized;
     bool m_roomSetupModeDetected = false;

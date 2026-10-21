@@ -79,6 +79,21 @@ static bool getValidWorkingZeroPose( bool standing, vr::HmdMatrix34_t* pose )
     return true;
 }
 
+// Logs presses and releases of space drag actions, to see which binding fires
+static void logDragInput( const char* action,
+                          bool active,
+                          bool& lastActive,
+                          bool handEnabled )
+{
+    if ( active == lastActive )
+    {
+        return;
+    }
+    LOG( INFO ) << "Input: " << action << ( active ? " pressed" : " released" )
+                << ( handEnabled ? "" : " (ignored, hand is disabled)" );
+    lastActive = active;
+}
+
 void MoveCenterTabController::initStage1()
 {
     reloadOffsetProfiles();
@@ -1373,15 +1388,10 @@ float MoveCenterTabController::getBoundsBasisMaxY()
 
 void MoveCenterTabController::leftHandSpaceDrag( bool leftHandDragActive )
 {
-    if ( leftHandDragActive != m_lastLeftHandDragInput )
-    {
-        LOG( INFO ) << "Left hand space drag "
-                    << ( leftHandDragActive ? "pressed" : "released" )
-                    << ( moveShortcutLeft() ? ""
-                                              : " (ignored, left hand space "
-                                                "drag is disabled)" );
-        m_lastLeftHandDragInput = leftHandDragActive;
-    }
+    logDragInput( "left hand space drag",
+                  leftHandDragActive,
+                  m_lastLeftHandDragInput,
+                  moveShortcutLeft() );
     if ( !moveShortcutLeft() )
     {
         return;
@@ -1435,15 +1445,10 @@ void MoveCenterTabController::leftHandSpaceDrag( bool leftHandDragActive )
 
 void MoveCenterTabController::rightHandSpaceDrag( bool rightHandDragActive )
 {
-    if ( rightHandDragActive != m_lastRightHandDragInput )
-    {
-        LOG( INFO ) << "Right hand space drag "
-                    << ( rightHandDragActive ? "pressed" : "released" )
-                    << ( moveShortcutRight() ? ""
-                                              : " (ignored, right hand space "
-                                                "drag is disabled)" );
-        m_lastRightHandDragInput = rightHandDragActive;
-    }
+    logDragInput( "right hand space drag",
+                  rightHandDragActive,
+                  m_lastRightHandDragInput,
+                  moveShortcutRight() );
     if ( !moveShortcutRight() )
     {
         return;
@@ -1498,6 +1503,10 @@ void MoveCenterTabController::rightHandSpaceDrag( bool rightHandDragActive )
 void MoveCenterTabController::optionalOverrideLeftHandSpaceDrag(
     bool overrideLeftHandDragActive )
 {
+    logDragInput( "left hand override space drag",
+                  overrideLeftHandDragActive,
+                  m_lastOverrideLeftHandDragInput,
+                  moveShortcutLeft() );
     if ( !moveShortcutLeft() )
     {
         return;
@@ -1550,6 +1559,10 @@ void MoveCenterTabController::optionalOverrideLeftHandSpaceDrag(
 void MoveCenterTabController::optionalOverrideRightHandSpaceDrag(
     bool overrideRightHandDragActive )
 {
+    logDragInput( "right hand override space drag",
+                  overrideRightHandDragActive,
+                  m_lastOverrideRightHandDragInput,
+                  moveShortcutRight() );
     if ( !moveShortcutRight() )
     {
         return;
@@ -1602,6 +1615,10 @@ void MoveCenterTabController::optionalOverrideRightHandSpaceDrag(
 void MoveCenterTabController::swapSpaceDragToLeftHandOverride(
     bool swapDragToLeftHand )
 {
+    logDragInput( "swap space drag to left hand",
+                  swapDragToLeftHand,
+                  m_lastSwapLeftHandDragInput,
+                  moveShortcutLeft() );
     if ( !moveShortcutLeft() )
     {
         return;
@@ -1680,6 +1697,10 @@ void MoveCenterTabController::swapSpaceDragToLeftHandOverride(
 void MoveCenterTabController::swapSpaceDragToRightHandOverride(
     bool swapDragToRightHand )
 {
+    logDragInput( "swap space drag to right hand",
+                  swapDragToRightHand,
+                  m_lastSwapRightHandDragInput,
+                  moveShortcutRight() );
     if ( !moveShortcutRight() )
     {
         return;
