@@ -26,6 +26,7 @@ enum class BoolSetting
     PLAYSPACE_enableUncalMotion,
     PLAYSPACE_adjustChaperone3,
     PLAYSPACE_adjustChaperone4,
+    PLAYSPACE_keepOffsetsOnRecenter,
 
     APPLICATION_disableVersionCheck,
     APPLICATION_previousShutdownSafe,

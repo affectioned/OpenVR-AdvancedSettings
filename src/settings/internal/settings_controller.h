@@ -293,6 +293,10 @@ private:
                           SettingCategory::Playspace,
                           QtInfo{ "adjustChaperone4" },
                           false },
+        BoolSettingValue{ BoolSetting::PLAYSPACE_keepOffsetsOnRecenter,
+                          SettingCategory::Playspace,
+                          QtInfo{ "keepOffsetsOnRecenter" },
+                          false },
 
         BoolSettingValue{ BoolSetting::APPLICATION_disableVersionCheck,
                           SettingCategory::Application,

@@ -314,6 +314,8 @@ Under `[playspaceSettings]` adding `showLogMatricesButton=true` will enable a bu
 
 Also under `[playspaceSettings]` adding `simpleRecenter=true` will disable a workaround that allows seated recenter to function on non-lighthouse devices. The workaround instantly applies a second seated recenter whenever a seated recenter is executed. Because simpleRecenter=true will break non-lighthouse seated mode, and true/false behavior is indistinguishable on lighthouse devices, usage of simpleRecenter=true is not recommended.
 
+Also under `[playspaceSettings]` adding `keepOffsetsOnRecenter=true` will keep space drag offsets when SteamVR resets the standing zero pose, instead of returning to the default position. This is meant for inside-out tracked headsets like the Steam Frame, which send these resets on their own when tracking relocalizes (for example when the cameras are covered). Use the playspace reset button or binding to reset offsets manually.
+
 Under `[utilitiesSettings]` adding `vrcDebug=true` will enable some buttons in the Utilities Tab to toggle debug panels in VRChat.
 
 Under `[applicationSettings]` adding `enableDebug=true` will show a "Debug State" text box in the Settings Tab. Changing the debug state number may be used for in-dev branch builds. At this time, it doesn't do anything on the master build.

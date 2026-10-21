@@ -27,8 +27,6 @@ constexpr double k_frictionHalt_mps = 0.0000001;
 constexpr double k_maxOpenvrWorkingSetOffest = 39900.0;
 constexpr double k_maxOpenvrCommitOffset = 990.0;
 constexpr double k_maxOvrasUniverseCenteredTurningOffset = 25000.0;
-// zero pose resets this soon after hmd tracking loss are treated as automatic
-constexpr double k_trackingIssueResetGraceSeconds = 3.0;
 
 class OverlayController;
 
@@ -194,7 +192,6 @@ private:
     bool m_dragHandTrackingLost = false;
     vr::ETrackingResult m_lastHmdTrackingResult
         = vr::TrackingResult_Uninitialized;
-    std::chrono::steady_clock::time_point m_lastHmdTrackingIssueTimePoint;
     bool m_roomSetupModeDetected = false;
     bool m_seatedModeDetected = false;
     unsigned settingsUpdateCounter = 0;

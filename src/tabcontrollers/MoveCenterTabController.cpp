@@ -965,22 +965,13 @@ void MoveCenterTabController::incomingZeroReset()
     //reset zero pose seems to move floor level as well as our changes, requiring 2 resets to set at correct level
     //or we could potentially not apply our offset during this process
     // Steam Frame sends zero pose resets on its own when inside-out tracking
-    // is lost and relocalizes. Only treat it as a user recenter if the hmd
-    // is tracking fine and has been for a while; otherwise keep the offsets.
-    vr::TrackedDevicePose_t hmdPose;
-    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(
-        vr::TrackingUniverseStanding, 0.0f, &hmdPose, 1 );
-    double secondsSinceTrackingIssue
-        = std::chrono::duration<double>( std::chrono::steady_clock::now()
-                                         - m_lastHmdTrackingIssueTimePoint )
-              .count();
-    if ( hmdPose.eTrackingResult != vr::TrackingResult_Running_OK
-         || secondsSinceTrackingIssue < k_trackingIssueResetGraceSeconds )
+    // relocalizes (e.g. cameras covered), even while the hmd reports
+    // Running_OK, so they can't be told apart from a user recenter. With
+    // keepOffsetsOnRecenter set, only re-read the basis and keep the offsets.
+    if ( settings::getSetting(
+             settings::BoolSetting::PLAYSPACE_keepOffsetsOnRecenter ) )
     {
-        LOG( INFO ) << "incomingZeroReset: hmd tracking issue (result: "
-                    << hmdPose.eTrackingResult << ", "
-                    << secondsSinceTrackingIssue
-                    << "s ago), keeping offsets X: " << m_offsetX
+        LOG( INFO ) << "incomingZeroReset: keeping offsets X: " << m_offsetX
                     << " Y: " << m_offsetY << " Z: " << m_offsetZ
                     << " Rot: " << m_rotation;
         vr::VRChaperoneSetup()->RevertWorkingCopy();
@@ -2907,10 +2898,7 @@ void MoveCenterTabController::eventLoopTick(
                     << devicePoses[0].eTrackingResult;
         m_lastHmdTrackingResult = devicePoses[0].eTrackingResult;
     }
-    if ( devicePoses[0].eTrackingResult != vr::TrackingResult_Running_OK )
-    {
-        m_lastHmdTrackingIssueTimePoint = std::chrono::steady_clock::now();
-    }
+
 
     // hmd rotations stats counting doesn't need to be smooth, so we
     // skip some frames for performance
