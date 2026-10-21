@@ -495,9 +495,6 @@ void SteamVRTabController::GatherDeviceInfo( DeviceInfo& device )
     }
 }
 
-// overlay key of SteamVR's controller binding page in the dashboard
-constexpr auto k_bindingUIOverlayKey = "system.vrwebhelper.controllerbinding";
-
 void SteamVRTabController::launchBindingUI()
 {
     vr::VRActionSetHandle_t actionHandle = 0;
@@ -520,14 +517,6 @@ void SteamVRTabController::launchBindingUI()
     if ( error != vr::VRInputError_None )
     {
         LOG( ERROR ) << "Input Error: " << error;
-        return;
-    }
-    // OpenBindingUI loads the binding page into the SteamVR dashboard, but on
-    // newer dashboards (e.g. Steam Frame) it doesn't switch to it, so the user
-    // had to click the Steam tab. Switch to the binding overlay ourselves.
-    if ( !desktopShow )
-    {
-        vr::VROverlay()->ShowDashboard( k_bindingUIOverlayKey );
     }
 }
 void SteamVRTabController::restartSteamVR()
