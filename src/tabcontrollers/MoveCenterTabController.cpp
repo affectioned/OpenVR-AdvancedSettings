@@ -36,6 +36,49 @@ void rotateFloatCoordinates( float coordinates[3], float angle )
 // application namespace
 namespace advsettings
 {
+// Gets the standing or seated zero pose from the working copy, rejecting it
+// if the call fails or returns garbage. On Steam Frame these calls were seen
+// to fail and leave uninitialized data, which got treated as a universe
+// center ~100km away and triggered a reset to the autosaved profile.
+static bool getValidWorkingZeroPose( bool standing, vr::HmdMatrix34_t* pose )
+{
+    vr::HmdMatrix34_t result;
+    bool ok = standing
+                  ? vr::VRChaperoneSetup()
+                        ->GetWorkingStandingZeroPoseToRawTrackingPose( &result )
+                  : vr::VRChaperoneSetup()
+                        ->GetWorkingSeatedZeroPoseToRawTrackingPose( &result );
+    for ( int row = 0; ok && row < 3; row++ )
+    {
+        for ( int col = 0; col < 4; col++ )
+        {
+            if ( !std::isfinite( result.m[row][col] ) )
+            {
+                ok = false;
+            }
+        }
+        // rotation rows must be unit length
+        double length = std::sqrt(
+            static_cast<double>( result.m[row][0] * result.m[row][0]
+                                 + result.m[row][1] * result.m[row][1]
+                                 + result.m[row][2] * result.m[row][2] ) );
+        if ( std::abs( length - 1.0 ) > 0.1
+             || std::abs( result.m[row][3] ) > k_maxOpenvrWorkingSetOffest )
+        {
+            ok = false;
+        }
+    }
+    if ( !ok )
+    {
+        LOG( WARNING ) << "Ignoring invalid "
+                       << ( standing ? "standing" : "seated" )
+                       << " zero pose from SteamVR";
+        return false;
+    }
+    *pose = result;
+    return true;
+}
+
 void MoveCenterTabController::initStage1()
 {
     reloadOffsetProfiles();
@@ -930,10 +973,18 @@ void MoveCenterTabController::incomingZeroReset()
     offset[1] = -m_offsetY;
     //TODO set universe center and seated recenter as 0 for this part
     vr::VRChaperoneSetup()->RevertWorkingCopy();
-    vr::VRChaperoneSetup()->GetWorkingStandingZeroPoseToRawTrackingPose(
-        &m_universeCenterForReset );
-    vr::VRChaperoneSetup()->GetWorkingSeatedZeroPoseToRawTrackingPose(
-        &m_seatedCenterForReset );
+    vr::HmdMatrix34_t universeCenter;
+    vr::HmdMatrix34_t seatedCenter;
+    if ( !getValidWorkingZeroPose( true, &universeCenter )
+         || !getValidWorkingZeroPose( false, &seatedCenter ) )
+    {
+        // keep the current offsets rather than resetting onto a bad basis
+        LOG( WARNING ) << "incomingZeroReset: skipped, keeping offsets";
+        updateSpace( true );
+        return;
+    }
+    m_universeCenterForReset = universeCenter;
+    m_seatedCenterForReset = seatedCenter;
     addOffset(offset);
     resetOffsets(true);
     //reset();
@@ -1015,9 +1066,8 @@ void MoveCenterTabController::zeroOffsets()
 {
     // first we'll check if we're outside the max commit distance
 
-    vr::HmdMatrix34_t currentCenter;
-    vr::VRChaperoneSetup()->GetWorkingStandingZeroPoseToRawTrackingPose(
-        &currentCenter );
+    vr::HmdMatrix34_t currentCenter = m_universeCenterForReset;
+    bool currentCenterValid = getValidWorkingZeroPose( true, &currentCenter );
     double currentCenterYaw = static_cast<double>(
         std::atan2( currentCenter.m[0][2], currentCenter.m[2][2] ) );
     double currentCenterXyz[3]
@@ -1028,7 +1078,11 @@ void MoveCenterTabController::zeroOffsets()
     rotateCoordinates( currentCenterXyz,
                        currentCenterYaw
                            - ( m_rotation * k_centidegreesToRadians ) );
-    if ( abs( currentCenterXyz[0] ) > k_maxOpenvrCommitOffset )
+    if ( !currentCenterValid )
+    {
+        LOG( WARNING ) << "Zero Offsets: skipped commit bounds check";
+    }
+    else if ( abs( currentCenterXyz[0] ) > k_maxOpenvrCommitOffset )
     {
         LOG( INFO ) << "Attempted Zero Offsets out of commit bounds ( X: "
                     << currentCenterXyz[0] << " )";
@@ -1209,10 +1263,9 @@ void MoveCenterTabController::updateChaperoneResetData()
     vr::VRChaperoneSetup()->GetWorkingCollisionBoundsInfo(
         m_collisionBoundsForReset, &currentQuadCount );
 
-    vr::VRChaperoneSetup()->GetWorkingStandingZeroPoseToRawTrackingPose(
-        &m_universeCenterForReset );
-    vr::VRChaperoneSetup()->GetWorkingSeatedZeroPoseToRawTrackingPose(
-        &m_seatedCenterForReset );
+    // on failure keep the previous basis
+    getValidWorkingZeroPose( true, &m_universeCenterForReset );
+    getValidWorkingZeroPose( false, &m_seatedCenterForReset );
 
     // updateCollisionBoundsForOffset();
     parent->m_chaperoneTabController.updateHeight( getBoundsBasisMaxY() );
@@ -1890,6 +1943,9 @@ void MoveCenterTabController::resetOffsets( bool resetOffsetsJustPressed )
     // of keyboard input.
     if ( resetOffsetsJustPressed )
     {
+        LOG( INFO ) << "resetOffsets: discarding offsets X: " << m_offsetX
+                    << " Y: " << m_offsetY << " Z: " << m_offsetZ
+                    << " Rot: " << m_rotation;
         m_offsetX = 0.0f;
         m_offsetY = 0.0f;
         m_offsetZ = 0.0f;
