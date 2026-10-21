@@ -964,6 +964,31 @@ void MoveCenterTabController::incomingZeroReset()
     //TODO 8/3/2026 SteamFrame May Need special handling, will discuss With Valve currently
     //reset zero pose seems to move floor level as well as our changes, requiring 2 resets to set at correct level
     //or we could potentially not apply our offset during this process
+    // Steam Frame sends zero pose resets on its own when inside-out tracking
+    // is lost and relocalizes. Only treat it as a user recenter if the hmd
+    // is tracking fine and has been for a while; otherwise keep the offsets.
+    vr::TrackedDevicePose_t hmdPose;
+    vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(
+        vr::TrackingUniverseStanding, 0.0f, &hmdPose, 1 );
+    double secondsSinceTrackingIssue
+        = std::chrono::duration<double>( std::chrono::steady_clock::now()
+                                         - m_lastHmdTrackingIssueTimePoint )
+              .count();
+    if ( hmdPose.eTrackingResult != vr::TrackingResult_Running_OK
+         || secondsSinceTrackingIssue < k_trackingIssueResetGraceSeconds )
+    {
+        LOG( INFO ) << "incomingZeroReset: hmd tracking issue (result: "
+                    << hmdPose.eTrackingResult << ", "
+                    << secondsSinceTrackingIssue
+                    << "s ago), keeping offsets X: " << m_offsetX
+                    << " Y: " << m_offsetY << " Z: " << m_offsetZ
+                    << " Rot: " << m_rotation;
+        vr::VRChaperoneSetup()->RevertWorkingCopy();
+        getValidWorkingZeroPose( true, &m_universeCenterForReset );
+        getValidWorkingZeroPose( false, &m_seatedCenterForReset );
+        updateSpace( true );
+        return;
+    }
     LOG( INFO ) << "incomingZeroReset: discarding offsets X: " << m_offsetX
                 << " Y: " << m_offsetY << " Z: " << m_offsetZ
                 << " Rot: " << m_rotation
@@ -2881,6 +2906,10 @@ void MoveCenterTabController::eventLoopTick(
                     << m_lastHmdTrackingResult << " -> "
                     << devicePoses[0].eTrackingResult;
         m_lastHmdTrackingResult = devicePoses[0].eTrackingResult;
+    }
+    if ( devicePoses[0].eTrackingResult != vr::TrackingResult_Running_OK )
+    {
+        m_lastHmdTrackingIssueTimePoint = std::chrono::steady_clock::now();
     }
 
     // hmd rotations stats counting doesn't need to be smooth, so we
