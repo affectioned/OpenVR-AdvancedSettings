@@ -1273,7 +1273,24 @@ void OverlayController::mainEventLoop()
         case vr::VREvent_SeatedZeroPoseReset:
         case vr::VREvent_StandingZeroPoseReset:
         {
+            // Logged to track down unexpected playspace resets (Steam Frame)
+            LOG( INFO ) << "(VREvent) "
+                        << ( vrEvent.eventType
+                                     == vr::VREvent_StandingZeroPoseReset
+                                 ? "StandingZeroPoseReset"
+                                 : "SeatedZeroPoseReset" )
+                        << " device: " << vrEvent.trackedDeviceIndex
+                        << " age: " << vrEvent.eventAgeSeconds << "s";
             m_incomingReset = true;
+        }
+        break;
+
+        case vr::VREvent_ChaperoneUniverseHasChanged:
+        {
+            LOG( INFO ) << "(VREvent) ChaperoneUniverseHasChanged... Previous: "
+                        << vrEvent.data.chaperone.m_nPreviousUniverse_deprecated
+                        << " Current: "
+                        << vrEvent.data.chaperone.m_nCurrentUniverse;
         }
         break;
 

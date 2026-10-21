@@ -189,6 +189,9 @@ private:
     bool m_gravityReversed = false;
     bool m_pendingZeroOffsets = true;
     bool m_dashWasOpenPreviousFrame = false;
+    bool m_dragHandTrackingLost = false;
+    vr::ETrackingResult m_lastHmdTrackingResult
+        = vr::TrackingResult_Uninitialized;
     bool m_roomSetupModeDetected = false;
     bool m_seatedModeDetected = false;
     unsigned settingsUpdateCounter = 0;

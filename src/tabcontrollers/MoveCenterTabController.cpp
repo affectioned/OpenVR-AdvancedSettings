@@ -921,6 +921,11 @@ void MoveCenterTabController::incomingZeroReset()
     //TODO 8/3/2026 SteamFrame May Need special handling, will discuss With Valve currently
     //reset zero pose seems to move floor level as well as our changes, requiring 2 resets to set at correct level
     //or we could potentially not apply our offset during this process
+    LOG( INFO ) << "incomingZeroReset: discarding offsets X: " << m_offsetX
+                << " Y: " << m_offsetY << " Z: " << m_offsetZ
+                << " Rot: " << m_rotation
+                << " dragging: " << ( m_activeDragHand
+                                      != vr::TrackedControllerRole_Invalid );
     float offset[3] = { 0, 0, 0 };
     offset[1] = -m_offsetY;
     //TODO set universe center and seated recenter as 0 for this part
@@ -950,6 +955,9 @@ void MoveCenterTabController::reset()
                           "basis is acquired!";
         return;
     }
+    LOG( INFO ) << "reset: discarding offsets X: " << m_offsetX
+                << " Y: " << m_offsetY << " Z: " << m_offsetZ
+                << " Rot: " << m_rotation;
     m_heightToggle = false;
     emit heightToggleChanged( m_heightToggle );
     m_oldOffsetX = 0.0f;
@@ -2188,9 +2196,18 @@ void MoveCenterTabController::updateHandDrag(
     if ( !movePose->bPoseIsValid || !movePose->bDeviceIsConnected
          || movePose->eTrackingResult != vr::TrackingResult_Running_OK )
     {
+        if ( m_lastMoveHand == m_activeDragHand && !m_dragHandTrackingLost )
+        {
+            LOG( INFO ) << "Drag hand lost tracking during space drag"
+                        << " (valid: " << movePose->bPoseIsValid
+                        << " connected: " << movePose->bDeviceIsConnected
+                        << " result: " << movePose->eTrackingResult << ")";
+        }
+        m_dragHandTrackingLost = true;
         m_lastMoveHand = m_activeDragHand;
         return;
     }
+    m_dragHandTrackingLost = false;
 
     double relativeControllerPosition[] = {
         static_cast<double>( movePose->mDeviceToAbsoluteTracking.m[0][3] ),
@@ -2224,11 +2241,28 @@ void MoveCenterTabController::updateHandDrag(
 
         // prevent positional glitches from exceeding max openvr offset
         // clamps. We do this by detecting a drag larger than 100m in a
-        // single frame.
+        // single frame and discarding that frame, rather than resetting
+        // and then still applying the glitched diff.
         if ( abs( diff[0] ) > 100.0 || abs( diff[1] ) > 100.0
              || abs( diff[2] ) > 100.0 )
         {
-            reset();
+            LOG( WARNING ) << "Discarding space drag glitch ( X: " << diff[0]
+                           << " Y: " << diff[1] << " Z: " << diff[2] << " )";
+            m_velocity[0] = 0.0;
+            m_velocity[1] = 0.0;
+            m_velocity[2] = 0.0;
+            m_lastControllerPosition[0] = absoluteControllerPosition[0];
+            m_lastControllerPosition[1] = absoluteControllerPosition[1];
+            m_lastControllerPosition[2] = absoluteControllerPosition[2];
+            return;
+        }
+        // smaller jumps are likely tracking relocalization, log but apply
+        if ( abs( diff[0] ) > 1.0 || abs( diff[1] ) > 1.0
+             || abs( diff[2] ) > 1.0 )
+        {
+            LOG( INFO ) << "Large space drag jump in one frame ( X: "
+                        << diff[0] << " Y: " << diff[1] << " Z: " << diff[2]
+                        << " )";
         }
 
         // prevents updating if axis movement is locked
@@ -2782,6 +2816,16 @@ void MoveCenterTabController::eventLoopTick(
 
     // get current space rotation in radians
     double angle = m_rotation * k_centidegreesToRadians;
+
+    // log hmd tracking state changes, tracking loss/relocalization can
+    // coincide with unexpected playspace resets
+    if ( devicePoses[0].eTrackingResult != m_lastHmdTrackingResult )
+    {
+        LOG( INFO ) << "HMD tracking result changed: "
+                    << m_lastHmdTrackingResult << " -> "
+                    << devicePoses[0].eTrackingResult;
+        m_lastHmdTrackingResult = devicePoses[0].eTrackingResult;
+    }
 
     // hmd rotations stats counting doesn't need to be smooth, so we
     // skip some frames for performance
