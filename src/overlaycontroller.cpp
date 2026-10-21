@@ -1297,14 +1297,7 @@ void OverlayController::mainEventLoop()
         case vr::VREvent_SeatedZeroPoseReset:
         case vr::VREvent_StandingZeroPoseReset:
         {
-            // Logged to track down unexpected playspace resets (Steam Frame)
-            LOG( INFO ) << "(VREvent) "
-                        << ( vrEvent.eventType
-                                     == vr::VREvent_StandingZeroPoseReset
-                                 ? "StandingZeroPoseReset"
-                                 : "SeatedZeroPoseReset" )
-                        << " device: " << vrEvent.trackedDeviceIndex
-                        << " age: " << vrEvent.eventAgeSeconds << "s";
+            // logged (rate limited) in MoveCenterTabController::incomingZeroReset
             m_incomingReset = true;
         }
         break;

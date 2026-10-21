@@ -982,21 +982,28 @@ void MoveCenterTabController::incomingZeroReset()
     // Steam Frame sends zero pose resets on its own when inside-out tracking
     // relocalizes (e.g. cameras covered), even while the hmd reports
     // Running_OK, so they can't be told apart from a user recenter. With
-    // offsetsOnRecenter set to keep (default on Steam Frame), only re-read the
-    // basis and keep the offsets.
+    // offsetsOnRecenter set to keep (default on Steam Frame), ignore the event
+    // entirely. The Frame also sends these resets in response to our own
+    // working copy changes during space drag, so touching the working copy
+    // here causes a feedback loop.
     auto offsetsOnRecenter = settings::getSetting(
         settings::IntSetting::PLAYSPACE_offsetsOnRecenter );
     if ( offsetsOnRecenter == k_offsetsOnRecenterKeep
          || ( offsetsOnRecenter == k_offsetsOnRecenterAuto
               && parent->isSteamFrameHmd() ) )
     {
-        LOG( INFO ) << "incomingZeroReset: keeping offsets X: " << m_offsetX
-                    << " Y: " << m_offsetY << " Z: " << m_offsetZ
-                    << " Rot: " << m_rotation;
-        vr::VRChaperoneSetup()->RevertWorkingCopy();
-        getValidWorkingZeroPose( true, &m_universeCenterForReset );
-        getValidWorkingZeroPose( false, &m_seatedCenterForReset );
-        updateSpace( true );
+        m_ignoredZeroResetCount++;
+        auto now = std::chrono::steady_clock::now();
+        if ( now - m_lastIgnoredZeroResetLogTimePoint
+             >= std::chrono::seconds( 1 ) )
+        {
+            LOG( INFO ) << "incomingZeroReset: ignored " << m_ignoredZeroResetCount
+                        << " reset(s), keeping offsets X: " << m_offsetX
+                        << " Y: " << m_offsetY << " Z: " << m_offsetZ
+                        << " Rot: " << m_rotation;
+            m_ignoredZeroResetCount = 0;
+            m_lastIgnoredZeroResetLogTimePoint = now;
+        }
         return;
     }
     LOG( INFO ) << "incomingZeroReset: discarding offsets X: " << m_offsetX

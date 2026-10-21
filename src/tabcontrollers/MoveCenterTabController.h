@@ -195,6 +195,8 @@ private:
     bool m_dashWasOpenPreviousFrame = false;
     bool m_dragHandTrackingLost = false;
     bool m_dragHandNoDevice = false;
+    unsigned m_ignoredZeroResetCount = 0;
+    std::chrono::steady_clock::time_point m_lastIgnoredZeroResetLogTimePoint;
     bool m_lastLeftHandDragInput = false;
     bool m_lastRightHandDragInput = false;
     bool m_lastOverrideLeftHandDragInput = false;
