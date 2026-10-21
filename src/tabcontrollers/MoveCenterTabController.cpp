@@ -982,28 +982,21 @@ void MoveCenterTabController::incomingZeroReset()
     // Steam Frame sends zero pose resets on its own when inside-out tracking
     // relocalizes (e.g. cameras covered), even while the hmd reports
     // Running_OK, so they can't be told apart from a user recenter. With
-    // offsetsOnRecenter set to keep (default on Steam Frame), ignore the event
-    // entirely. The Frame also sends these resets in response to our own
-    // working copy changes during space drag, so touching the working copy
-    // here causes a feedback loop.
+    // offsetsOnRecenter set to keep (default on Steam Frame), re-sync the
+    // working copy with SteamVR and re-apply the current offsets. The Frame
+    // also sends these resets in response to our own working copy changes
+    // during space drag, so re-syncing on every event loops; ignoring them
+    // leaves SteamVR and OVRAS disagreeing on the origin. Re-sync at most
+    // every k_zeroResetResyncIntervalMs instead (see resyncAfterZeroReset).
     auto offsetsOnRecenter = settings::getSetting(
         settings::IntSetting::PLAYSPACE_offsetsOnRecenter );
     if ( offsetsOnRecenter == k_offsetsOnRecenterKeep
          || ( offsetsOnRecenter == k_offsetsOnRecenterAuto
               && parent->isSteamFrameHmd() ) )
     {
-        m_ignoredZeroResetCount++;
-        auto now = std::chrono::steady_clock::now();
-        if ( now - m_lastIgnoredZeroResetLogTimePoint
-             >= std::chrono::seconds( 1 ) )
-        {
-            LOG( INFO ) << "incomingZeroReset: ignored " << m_ignoredZeroResetCount
-                        << " reset(s), keeping offsets X: " << m_offsetX
-                        << " Y: " << m_offsetY << " Z: " << m_offsetZ
-                        << " Rot: " << m_rotation;
-            m_ignoredZeroResetCount = 0;
-            m_lastIgnoredZeroResetLogTimePoint = now;
-        }
+        m_zeroResetCount++;
+        m_zeroResetResyncPending = true;
+        resyncAfterZeroReset();
         return;
     }
     LOG( INFO ) << "incomingZeroReset: discarding offsets X: " << m_offsetX
@@ -1031,6 +1024,30 @@ void MoveCenterTabController::incomingZeroReset()
     resetOffsets(true);
     //reset();
     return;
+}
+
+// Re-applies the current offsets after zero pose resets, rate limited.
+// Called on reset events and every tick while a re-sync is pending.
+void MoveCenterTabController::resyncAfterZeroReset()
+{
+    auto now = std::chrono::steady_clock::now();
+    if ( !m_zeroResetResyncPending
+         || now - m_lastZeroResetResyncTimePoint
+                < std::chrono::milliseconds( k_zeroResetResyncIntervalMs ) )
+    {
+        return;
+    }
+    LOG( INFO ) << "incomingZeroReset: " << m_zeroResetCount
+                << " reset(s), re-applying offsets X: " << m_offsetX
+                << " Y: " << m_offsetY << " Z: " << m_offsetZ
+                << " Rot: " << m_rotation;
+    vr::VRChaperoneSetup()->RevertWorkingCopy();
+    getValidWorkingZeroPose( true, &m_universeCenterForReset );
+    getValidWorkingZeroPose( false, &m_seatedCenterForReset );
+    updateSpace( true );
+    m_zeroResetCount = 0;
+    m_zeroResetResyncPending = false;
+    m_lastZeroResetResyncTimePoint = now;
 }
 
 //TODO 9/4/26 This needs to be looked at This moves the chaperone, and seems to do same thing as
@@ -2945,6 +2962,8 @@ void MoveCenterTabController::eventLoopTick(
         return;
     }
     setTrackingUniverse( int( universe ) );
+
+    resyncAfterZeroReset();
 
     // get current space rotation in radians
     double angle = m_rotation * k_centidegreesToRadians;

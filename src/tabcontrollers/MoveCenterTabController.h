@@ -31,6 +31,8 @@ constexpr double k_maxOvrasUniverseCenteredTurningOffset = 25000.0;
 constexpr int k_offsetsOnRecenterAuto = 0;
 constexpr int k_offsetsOnRecenterReset = 1;
 constexpr int k_offsetsOnRecenterKeep = 2;
+// minimum time between re-syncs after zero pose resets in keep mode
+constexpr int k_zeroResetResyncIntervalMs = 500;
 
 class OverlayController;
 
@@ -195,8 +197,9 @@ private:
     bool m_dashWasOpenPreviousFrame = false;
     bool m_dragHandTrackingLost = false;
     bool m_dragHandNoDevice = false;
-    unsigned m_ignoredZeroResetCount = 0;
-    std::chrono::steady_clock::time_point m_lastIgnoredZeroResetLogTimePoint;
+    unsigned m_zeroResetCount = 0;
+    bool m_zeroResetResyncPending = false;
+    std::chrono::steady_clock::time_point m_lastZeroResetResyncTimePoint;
     bool m_lastLeftHandDragInput = false;
     bool m_lastRightHandDragInput = false;
     bool m_lastOverrideLeftHandDragInput = false;
@@ -287,6 +290,7 @@ public:
     double getHmdYawTotal();
     void resetHmdYawTotal();
     void incomingZeroReset();
+    void resyncAfterZeroReset();
     void setBoundsBasisHeight( float newHeight );
     float getBoundsBasisMaxY();
 
