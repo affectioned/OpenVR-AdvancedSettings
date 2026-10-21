@@ -15,6 +15,14 @@ jobs:
         with:
           version: '5.15.2'
           arch: win64_msvc2019_64
+          cache: true
+
+      - name: Install jom
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://download.qt.io/official_releases/jom/jom.zip -OutFile jom.zip
+          Expand-Archive jom.zip "$env:RUNNER_TEMP\jom"
+          "$env:RUNNER_TEMP\jom" | Out-File -Append $env:GITHUB_PATH
 
       - uses: ilammy/msvc-dev-cmd@v1
         with:
@@ -24,7 +32,7 @@ jobs:
         shell: cmd
         run: |
           qmake -spec win32-msvc CONFIG+=X86_64 CONFIG+=release
-          nmake
+          jom
 
       - uses: actions/upload-artifact@v4
         with:
