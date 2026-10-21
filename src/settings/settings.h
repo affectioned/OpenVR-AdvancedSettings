@@ -26,7 +26,6 @@ enum class BoolSetting
     PLAYSPACE_enableUncalMotion,
     PLAYSPACE_adjustChaperone3,
     PLAYSPACE_adjustChaperone4,
-    PLAYSPACE_keepOffsetsOnRecenter,
 
     APPLICATION_disableVersionCheck,
     APPLICATION_previousShutdownSafe,
@@ -125,6 +124,7 @@ enum class IntSetting
     PLAYSPACE_dragComfortFactor,
     PLAYSPACE_turnComfortFactor,
     PLAYSPACE_frictionPercent,
+    PLAYSPACE_offsetsOnRecenter,
 
     APPLICATION_debugState,
     APPLICATION_customTickRateMs,

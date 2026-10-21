@@ -967,9 +967,13 @@ void MoveCenterTabController::incomingZeroReset()
     // Steam Frame sends zero pose resets on its own when inside-out tracking
     // relocalizes (e.g. cameras covered), even while the hmd reports
     // Running_OK, so they can't be told apart from a user recenter. With
-    // keepOffsetsOnRecenter set, only re-read the basis and keep the offsets.
-    if ( settings::getSetting(
-             settings::BoolSetting::PLAYSPACE_keepOffsetsOnRecenter ) )
+    // offsetsOnRecenter set to keep (default on Steam Frame), only re-read the
+    // basis and keep the offsets.
+    auto offsetsOnRecenter = settings::getSetting(
+        settings::IntSetting::PLAYSPACE_offsetsOnRecenter );
+    if ( offsetsOnRecenter == k_offsetsOnRecenterKeep
+         || ( offsetsOnRecenter == k_offsetsOnRecenterAuto
+              && parent->isSteamFrameHmd() ) )
     {
         LOG( INFO ) << "incomingZeroReset: keeping offsets X: " << m_offsetX
                     << " Y: " << m_offsetY << " Z: " << m_offsetZ
@@ -1369,6 +1373,15 @@ float MoveCenterTabController::getBoundsBasisMaxY()
 
 void MoveCenterTabController::leftHandSpaceDrag( bool leftHandDragActive )
 {
+    if ( leftHandDragActive != m_lastLeftHandDragInput )
+    {
+        LOG( INFO ) << "Left hand space drag "
+                    << ( leftHandDragActive ? "pressed" : "released" )
+                    << ( moveShortcutLeft() ? ""
+                                              : " (ignored, left hand space "
+                                                "drag is disabled)" );
+        m_lastLeftHandDragInput = leftHandDragActive;
+    }
     if ( !moveShortcutLeft() )
     {
         return;
@@ -1422,6 +1435,15 @@ void MoveCenterTabController::leftHandSpaceDrag( bool leftHandDragActive )
 
 void MoveCenterTabController::rightHandSpaceDrag( bool rightHandDragActive )
 {
+    if ( rightHandDragActive != m_lastRightHandDragInput )
+    {
+        LOG( INFO ) << "Right hand space drag "
+                    << ( rightHandDragActive ? "pressed" : "released" )
+                    << ( moveShortcutRight() ? ""
+                                              : " (ignored, right hand space "
+                                                "drag is disabled)" );
+        m_lastRightHandDragInput = rightHandDragActive;
+    }
     if ( !moveShortcutRight() )
     {
         return;
@@ -2232,6 +2254,16 @@ void MoveCenterTabController::updateHandDrag(
     auto moveHandId = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(
         m_activeDragHand );
 
+    bool noDeviceForHand
+        = m_activeDragHand != vr::TrackedControllerRole_Invalid
+          && ( moveHandId == vr::k_unTrackedDeviceIndexInvalid
+               || moveHandId >= vr::k_unMaxTrackedDeviceCount );
+    if ( noDeviceForHand && !m_dragHandNoDevice )
+    {
+        LOG( INFO ) << "Space drag: SteamVR has no device for hand role "
+                    << m_activeDragHand;
+    }
+    m_dragHandNoDevice = noDeviceForHand;
     if ( m_activeDragHand == vr::TrackedControllerRole_Invalid
          || moveHandId == vr::k_unTrackedDeviceIndexInvalid
          || moveHandId >= vr::k_unMaxTrackedDeviceCount )

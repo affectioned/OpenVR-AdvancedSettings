@@ -27,6 +27,10 @@ constexpr double k_frictionHalt_mps = 0.0000001;
 constexpr double k_maxOpenvrWorkingSetOffest = 39900.0;
 constexpr double k_maxOpenvrCommitOffset = 990.0;
 constexpr double k_maxOvrasUniverseCenteredTurningOffset = 25000.0;
+// PLAYSPACE_offsetsOnRecenter values
+constexpr int k_offsetsOnRecenterAuto = 0;
+constexpr int k_offsetsOnRecenterReset = 1;
+constexpr int k_offsetsOnRecenterKeep = 2;
 
 class OverlayController;
 
@@ -190,6 +194,9 @@ private:
     bool m_pendingZeroOffsets = true;
     bool m_dashWasOpenPreviousFrame = false;
     bool m_dragHandTrackingLost = false;
+    bool m_dragHandNoDevice = false;
+    bool m_lastLeftHandDragInput = false;
+    bool m_lastRightHandDragInput = false;
     vr::ETrackingResult m_lastHmdTrackingResult
         = vr::TrackingResult_Uninitialized;
     bool m_roomSetupModeDetected = false;

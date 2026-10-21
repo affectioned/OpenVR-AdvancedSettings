@@ -293,10 +293,6 @@ private:
                           SettingCategory::Playspace,
                           QtInfo{ "adjustChaperone4" },
                           false },
-        BoolSettingValue{ BoolSetting::PLAYSPACE_keepOffsetsOnRecenter,
-                          SettingCategory::Playspace,
-                          QtInfo{ "keepOffsetsOnRecenter" },
-                          false },
 
         BoolSettingValue{ BoolSetting::APPLICATION_disableVersionCheck,
                           SettingCategory::Application,
@@ -607,6 +603,11 @@ private:
         IntSettingValue{ IntSetting::PLAYSPACE_frictionPercent,
                          SettingCategory::Playspace,
                          QtInfo{ "frictionPercent" },
+                         0 },
+        // 0 = auto (keep on Steam Frame), 1 = always reset, 2 = always keep
+        IntSettingValue{ IntSetting::PLAYSPACE_offsetsOnRecenter,
+                         SettingCategory::Playspace,
+                         QtInfo{ "offsetsOnRecenter" },
                          0 },
 
         IntSettingValue{ IntSetting::APPLICATION_debugState,
